@@ -9,6 +9,7 @@ matplotlib==3.10.9
 seaborn==0.13.2
 joblib==1.5.3
 pyarrow==25.0.1
+tabulate==0.10.0
 nbformat==5.11.1
 nbclient==0.11.0
 ipykernel==7.4.0
