@@ -1,0 +1,23 @@
+stage,detail,count
+dedup,traffic exact duplicate rows removed,1767
+dedup,traffic key duplicates (road_id+timestamp) removed,0
+outliers,negative traffic_volume nulled,239
+outliers,avg_speed > 200 km/h nulled,236
+outliers,occupancy > 100% nulled,229
+outliers,traffic_volume: statistical extremes (z>6 & IQR cap) nulled,0
+outliers,avg_speed: statistical extremes (z>6 & IQR cap) nulled,0
+outliers,occupancy: statistical extremes (z>6 & IQR cap) nulled,0
+missing,entire sensor windows restored for dropout gaps,4499
+imputation,traffic_volume: time-interpolated / median-filled,9086
+imputation,avg_speed: time-interpolated / median-filled,9078
+imputation,occupancy: time-interpolated / median-filled,9072
+harmonisation,congestion_level blanks derived from V/C banding,31123
+dedup,weather exact duplicates removed,0
+imputation,temperature: station-interpolated / median-filled,167
+imputation,visibility: station-interpolated / median-filled,111
+imputation,rainfall: station-interpolated / median-filled,0
+merge,rows after weather join (hourly -> 30-min broadcast),181200
+merge,rows after calendar join,181200
+validation,final row count,181200
+validation,segments,25
+validation,time span (days),151
