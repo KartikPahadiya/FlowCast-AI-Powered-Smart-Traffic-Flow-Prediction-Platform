@@ -126,7 +126,7 @@ if view == "Live prediction":
     show["Accident risk"] = show["Accident risk"].map("{:.1%}".format)
     show["Confidence"] = show["Confidence"].map("{:.0%}".format)
     show["Volume (veh)"] = show["Volume (veh)"].round(0)
-    st.dataframe(show, use_container_width=True, hide_index=True,
+    st.dataframe(show, width="stretch", hide_index=True,
                  height=35 * len(show) + 40)
     st.plotly_chart(px.bar(snap, x="road_id", y="risk_probability",
                            color="pred_congestion", category_orders={
@@ -155,17 +155,17 @@ elif view == "Historical trends":
                     line=dict(color="#e74c3c", dash="dot"))
     fig.update_layout(title=f"{road} — volume over time",
                       yaxis_title="vehicles / 30-min")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     fig2 = px.line(d, x="timestamp", y="avg_speed",
                    labels={"avg_speed": "km/h", "timestamp": ""},
                    title=f"{road} — average speed")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
     hourly = pred.copy()
     hourly["hour"] = hourly["timestamp"].dt.hour
     fig3 = px.box(hourly[hourly["road_id"] == road], x="hour", y="traffic_volume",
                   labels={"traffic_volume": "vehicles", "hour": "hour of day"},
                   title=f"{road} — peak-hour pattern (full history)")
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width="stretch")
 
 # ================================================= 3. congestion heatmap
 elif view == "Congestion heatmap":
@@ -177,12 +177,13 @@ elif view == "Congestion heatmap":
     grid = d.pivot_table(index="road_id", columns=d["timestamp"].dt.strftime("%H:%M"),
                          values="pred_congestion", aggfunc="first") \
             .reindex(columns=sorted(d["timestamp"].dt.strftime("%H:%M").unique()))
-    code = grid.replace({c: i for i, c in enumerate(CONG_ORDER)})
+    code = grid.apply(lambda s: pd.Categorical(s, categories=CONG_ORDER,
+                                               ordered=True).codes)
     fig = px.imshow(code, color_continuous_scale=cong_color_scale(),
                     zmin=0, zmax=3, aspect="auto",
                     labels={"color": "Congestion"})
     fig.update_layout(title=f"Predicted congestion — {day}")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption("0 = Free-flow · 1 = Moderate · 2 = Heavy · 3 = Severe")
 
 # ================================================== 4. road comparison
@@ -203,10 +204,10 @@ elif view == "Road comparison":
     c1.plotly_chart(px.bar(agg, x="road_id", y="mean_volume", color="road_id",
                            labels={"mean_volume": "mean vehicles/30-min",
                                    "road_id": "Segment"},
-                           title="Mean volume"), use_container_width=True)
+                           title="Mean volume"), width="stretch")
     c2.plotly_chart(px.bar(agg, x="road_id", y="mean_speed", color="road_id",
                            labels={"mean_speed": "km/h"},
-                           title="Mean speed"), use_container_width=True)
+                           title="Mean speed"), width="stretch")
     c1.plotly_chart(px.bar(agg, x="road_id", y="severe_share", color="road_id",
                            labels={"severe_share": "share of windows"},
                            title="Severe-congestion share"),
@@ -251,21 +252,21 @@ elif view == "Model performance":
         fig.add_scatter(x=h["epoch"], y=h["val_mse"], name="validation MSE")
         fig.update_layout(title="LSTM training curves (early stopping on val MSE)",
                           xaxis_title="epoch", yaxis_title="MSE (scaled volume)")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         gd = config.MODELS_DIR / "gd_loss_curve.json"
         if gd.exists():
             g = pd.DataFrame({"iteration": range(len(json.load(open(gd)))),
                               "MSE": json.load(open(gd))})
             fig2 = px.line(g, x="iteration", y="MSE",
                            title="From-scratch linear regression — gradient-descent loss curve")
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
     if "confusion_matrix" in sb[target].get("XGBoost", {}):
         cm = np.array(sb[target]["XGBoost"]["confusion_matrix"])
         labs = CONG_ORDER if target == "congestion" else ["no", "yes"]
         fig3 = px.imshow(cm, text_auto=True, x=labs, y=labs,
                          labels={"x": "predicted", "y": "actual"},
                          title="XGBoost confusion matrix (test)")
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, width="stretch")
 
 # ============================================== 6. feature importance
 elif view == "Feature importance":
@@ -274,7 +275,10 @@ elif view == "Feature importance":
                           [k for k in models if "RandomForest" in k],
                           format_func=lambda s: s.replace("__", " · "))
     model = models[target]
-    imp = pd.DataFrame({"feature": FEATURE_COLS,
+    # the accident-risk model was trained on the extended risk feature set
+    feat_cols = (RISK_FEATURE_COLS
+                 if target.startswith("accident_risk") else FEATURE_COLS)
+    imp = pd.DataFrame({"feature": feat_cols,
                         "importance": model.feature_importances_}) \
             .sort_values("importance")
     st.plotly_chart(px.bar(imp, x="importance", y="feature", orientation="h",
@@ -295,12 +299,12 @@ elif view == "Forecast visualisation":
                     name="forecast", line=dict(color="#e74c3c"))
     fig.update_layout(title=f"{road} — test window overlay",
                       yaxis_title="vehicles / 30-min")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     err = d["pred_volume"] - d["traffic_volume"]
     fig2 = px.histogram(err, nbins=60,
                         labels={"value": "forecast error (vehicles)", "count": ""},
                         title="Residual distribution (bias & spread)")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
     st.metric("Mean bias", f"{err.mean():+.1f} vehicles",
               help="Systematic over/under-prediction on the test window")
 
@@ -321,7 +325,7 @@ elif view == "Prediction confidence":
                     line=dict(width=0))
     fig.update_layout(title=f"{road} — forecast with confidence band",
                       yaxis_title="vehicles / 30-min")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     cov = ((d["traffic_volume"] >= d["volume_lower"]) &
            (d["traffic_volume"] <= d["volume_upper"])).mean()
     st.metric("Empirical band coverage (should be ≈ 95 %)",
@@ -336,7 +340,7 @@ elif view == "Prediction confidence":
                            category_orders={"pred_congestion": CONG_ORDER},
                            labels={"mean_conf": "mean class probability",
                                    "pred_congestion": ""},
-                           title="Congestion-class confidence"), use_container_width=True)
+                           title="Congestion-class confidence"), width="stretch")
     risk = pred[pred["is_test"]].copy()
     risk["risk_band"] = pd.cut(risk["risk_probability"], [0, .02, .05, .1, 1],
                                labels=["<2%", "2-5%", "5-10%", ">10%"])
@@ -356,7 +360,7 @@ elif view == "Weather vs traffic":
                  labels={"traffic_volume": "vehicles / 30-min",
                          "weather_condition": "condition"},
                  title="Observed volume by weather condition")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     c1, c2 = st.columns(2)
     c1.plotly_chart(px.scatter(d.sample(min(20000, len(d)), random_state=1),
                                x="rainfall", y="avg_speed", opacity=0.2,
@@ -378,7 +382,7 @@ elif view == "Weather vs traffic":
                    markers=True, category_orders={
                        "weather_condition": ["Clear", "Cloudy", "Rain", "Fog"]},
                    title="Mean volume — weekday × weather")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width="stretch")
 
 # ========================================== 10. custom prediction
 elif view == "🔧 Predict (custom)":
@@ -411,7 +415,7 @@ elif view == "🔧 Predict (custom)":
                      color=CONG_ORDER, color_discrete_map=CONG_COLOR,
                      labels={"x": "", "y": "probability"},
                      title="Congestion-class probabilities")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 # ============================================ 11. data upload
 elif view == "📤 Data upload":
@@ -431,7 +435,7 @@ elif view == "📤 Data upload":
             cleaned_up = clean_mod.validate_final(cleaned_up, qlog)
             st.success(f"Validated & cleaned: {len(cleaned_up):,} rows, "
                        f"{cleaned_up['road_id'].nunique()} segments")
-            st.dataframe(qlog.to_frame(), use_container_width=True)
+            st.dataframe(qlog.to_frame(), width="stretch")
             st.download_button("Download cleaned CSV",
                                cleaned_up.to_csv(index=False),
                                "flowcast_upload_cleaned.csv", "text/csv")
@@ -459,7 +463,7 @@ elif view == "📄 Reports & insights":
     worst["severe_heavy"] = worst["Heavy"] + worst["Severe"]
     worst = worst.sort_values("severe_heavy", ascending=False).head(5)
     st.write("**Most congested segments (Heavy + Severe windows):**")
-    st.dataframe(worst[CONG_ORDER], use_container_width=True)
+    st.dataframe(worst[CONG_ORDER], width="stretch")
     rain = d.groupby("weather_condition")["traffic_volume"].mean()
     st.write("**Mean volume by weather:**",
              {k: f"{v:.0f}" for k, v in rain.items()})
