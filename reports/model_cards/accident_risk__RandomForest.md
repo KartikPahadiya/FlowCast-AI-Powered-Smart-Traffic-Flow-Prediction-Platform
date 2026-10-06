@@ -18,7 +18,7 @@
   "accuracy": 0.9904726598702502,
   "macro_precision": 0.4952363299351251,
   "macro_recall": 0.5,
-  "train_seconds": 13.2
+  "train_seconds": 11.5
 }
 
 ## Confusion matrix (test)

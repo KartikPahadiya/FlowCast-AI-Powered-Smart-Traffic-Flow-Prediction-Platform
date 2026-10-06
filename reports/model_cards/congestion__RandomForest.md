@@ -18,7 +18,7 @@
   "macro_precision": 0.7753591156604503,
   "macro_recall": 0.7563557995076869,
   "ROC_AUC": 0.9743941226690231,
-  "train_seconds": 11.6
+  "train_seconds": 7.2
 }
 
 ## Confusion matrix (test)

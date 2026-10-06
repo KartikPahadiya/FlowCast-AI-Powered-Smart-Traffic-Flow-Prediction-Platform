@@ -17,7 +17,7 @@
   "MAE": 37.362614304875756,
   "MAPE": 8.796050255596002,
   "R2": 0.9629757391770912,
-  "train_seconds": 3.9
+  "train_seconds": 3.5
 }
 
 ## Confusion matrix (test)

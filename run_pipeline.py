@@ -50,14 +50,14 @@ def stage_data():
 
 def stage_classical():
     t0 = time.time()
+    from src.flowcast.features import RISK_FEATURE_COLS
     feat = pd.read_parquet(config.FEATURES_PARQUET)
     train, val, test = features.time_split(feat)
     trainer = models_classical.Trainer(train, val, test)
     trainer.train_regressors("traffic_volume")
     trainer.train_classifiers("congestion", "congestion_code", [0, 1, 2, 3])
-    pos = int((train["accident_risk"] == 0).sum())
     trainer.train_classifiers("accident_risk", "accident_risk", [0, 1],
-                              pos_weight=max(1, pos // max(1, int(train["accident_risk"].sum()))))
+                              pos_weight=3, feature_cols=RISK_FEATURE_COLS)
     trainer.train_regressors("travel_time")
     models_classical.save_artifacts(trainer)
     config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -167,6 +167,11 @@ def stage_finalize():
     X = feat[features.FEATURE_COLS].to_numpy(np.float32)
     from src.flowcast.features import RISK_FEATURE_COLS
     Xrisk = feat[RISK_FEATURE_COLS].to_numpy(np.float32)
+    if getattr(risk_model, "n_features_in_", len(RISK_FEATURE_COLS)) != len(RISK_FEATURE_COLS):
+        raise RuntimeError(
+            "Persisted accident-risk model was trained on a different feature "
+            "set — rerun `python run_pipeline.py m5c` to retrain it, then "
+            "`python run_pipeline.py finalize` again.")
     out = feat[["road_id", "road_name", "timestamp", "traffic_volume",
                 "avg_speed", "travel_time", "congestion_level",
                 "weather_condition", "rainfall", "visibility",
